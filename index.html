@@ -89,7 +89,8 @@ footer{text-align:center;color:var(--sub);font-size:12px;margin-top:20px;}
 
 <div class="info-banner">
 📋 사진 <b>"복사"</b> 버튼을 누르면 사진이 클립보드에 담겨서, 네이버 블로그 글쓰기 화면에 바로 붙여넣기(Ctrl+V / 꾹 눌러 붙여넣기)가 가능해요.<br>
-일부 구형 브라우저나 카카오톡·네이버 인앱 브라우저에서는 복사가 안 될 수 있는데, 이때는 버튼이 자동으로 <b>"다운로드"</b> 안내로 바뀌니 사진을 저장해서 첨부해주세요.
+단, 이 기능은 <b>https 주소(GitHub Pages 등)</b>에서 열었을 때만 동작해요. 컴퓨터에 저장한 파일을 그냥 더블클릭해서 여는 경우(주소창이 file://로 시작)에는 브라우저 보안 정책상 복사가 막혀 있어요.<br>
+일부 구형 브라우저나 카카오톡·네이버 인앱 브라우저에서도 지원이 안 될 수 있는데, 이때는 <b>"다운로드"</b> 버튼으로 저장해서 첨부해주세요.
 </div>
 
 <div class="btn-row">
@@ -174,13 +175,35 @@ function buildParagraph(container, sentences, plainArr){
   container.appendChild(p);
 }
 
+function loadImage(src){
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = src;
+  });
+}
+
+async function toPngBlob(dataUri){
+  const img = await loadImage(dataUri);
+  const canvas = document.createElement('canvas');
+  canvas.width = img.naturalWidth;
+  canvas.height = img.naturalHeight;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(img, 0, 0);
+  const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+  if(!blob) throw new Error('png convert failed');
+  return blob;
+}
+
 async function copyImage(im, btn){
   const original = btn.textContent;
   try{
     if(!navigator.clipboard || !window.ClipboardItem) throw new Error('unsupported');
-    const res = await fetch(im.data);
-    const blob = await res.blob();
-    await navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]);
+    // Chrome/Edge only accept image/png in clipboard.write, so JPEGs are
+    // redrawn onto a canvas and re-exported as PNG before copying.
+    const pngBlob = await toPngBlob(im.data);
+    await navigator.clipboard.write([new ClipboardItem({ 'image/png': pngBlob })]);
     btn.textContent = '복사 완료! ✅';
     btn.classList.add('copied');
     setTimeout(()=>{ btn.textContent = original; btn.classList.remove('copied'); }, 1800);
