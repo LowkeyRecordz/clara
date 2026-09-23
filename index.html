@@ -313,7 +313,9 @@ function generate(kind){
     const val = document.createElement('p'); val.className = 'contact-value'; val.textContent = c.value;
     cb.appendChild(lab); cb.appendChild(desc); cb.appendChild(val);
     bodyEl.appendChild(cb);
-    plain.push(`${c.label}\n${c.desc}\n${c.value}`);
+    plain.push(c.label);
+    plain.push(c.desc);
+    plain.push(c.value);
   });
 
   addGap(bodyEl, false);
